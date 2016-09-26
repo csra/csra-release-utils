@@ -39,9 +39,27 @@ def detect_upgradable_projects():
     print ("detect upgradeable projects...")
     return ""
 
-def create_distribution_file(distribution_file, distribution_release_file):
+def create_distribution_file(distribution_file, distribution_release_file, distribution_version):
     print ("create distribution " + str(distribution_release_file) + " ...")
-    shutil.copy(distribution_file, distribution_release_file)
+    with open(distribution_release_file, 'w') as release_file
+        with open(distribution_file) as dist_file
+            for line in dist_file.readLines():
+                if "latest-stable" in line
+                    print("found latest stable [" + line.split('"')[1])
+                if "master" in line 
+                    print("found master [" + line.split('"')[1])
+                if "rc" in line
+                    print("found rc [" + line.split('"')[1])
+                if "\"name\"" in line
+                    context = line.split(':')
+                    context[1] = " \"lsp-csra-" + distribution_version + "\"",
+                    line = ':'.join(context)
+                    print("replaced dist name: " + line)
+                if "\"variant\"" in line
+                    context = line.split(':')
+                    context[1] = " \"" + distribution_version + "\"",
+                    
+                release_file.write(line)
 
 def release_related_projects():
     print ("release releated projects...")
@@ -97,7 +115,7 @@ if __name__ == "__main__":
         
         # start release pipeline
         projects = detect_upgradable_projects()
-        create_distribution_file(distribution_file_uri, distribution_release_uri)
+        create_distribution_file(distribution_file_uri, distribution_release_uri, distribution_version)
         release_related_projects()
         upgrade_versions_in_new_distribution(projects, citk_path, distribution_release_name)
         appliy_custom_release_modifications()
