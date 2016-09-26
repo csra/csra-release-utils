@@ -52,21 +52,20 @@ def create_distribution_file(distribution_file, distribution_release_file, distr
         with open(distribution_file) as dist_file:
             for line in dist_file.readlines():
                 if "\"latest-stable\"" in line:
-                    print("found latest stable [" + line.split('"')[1])
+                    print("found latest stable " + line)
                 if "\"master\"" in line:
-                    print("found master [" + line.split('"')[1])
+                    print("found master " + line)
                 if "\"rc\"" in line:
-                    print("found rc [" + line.split('"')[1])
+                    print("found rc " + line)
                 if "\"name\"" in line:
                     context = line.split(':')
-                    context[1] = " \"lsp-csra-" + distribution_version + "\"",
+                    context[1] = " \"lsp-csra-" + distribution_version + "\",\n"
                     line = ':'.join(context)
-                    print("replaced dist name: " + line)
                 if "\"variant\"" in line:
+                    print("found variant " + line)
                     context = line.split(':')
-                    context[1] = " \"" + distribution_version + "\"",
+                    context[1] = " \"" + distribution_version + "\",\n"
                     line = ':'.join(context)
-                    print("replaced variant: " + line)
                 release_file.write(line)
 
     return DistributionReport(['jul', 'bco.dal'], [ProjectDescription("lsp-csra.system-startup", "rc"), ProjectDescription("bco.registry.csra-db", "master")])
