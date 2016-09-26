@@ -92,8 +92,19 @@ def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distrib
 #def verify_new_distribution():
 #    print ("verify new distribution...")
     
-def push_distribution():
+def push_distribution(citk_path, distribution_release_file, distribution_version):
     print ("push distribution...")
+    repo = Repo(citk_path)
+    index = repo.index
+    relative_dist_path = "distributions/" + distribution_release_file + ".distribution"
+    #print("add distrubtion_file " + relative_dist_path)
+    index.add([relative_dist_path])
+    index.commit("released version " + distribution_version + " from rc")
+    #print("remote " + str(repo.remotes[0]))
+    try:
+        repo.remotes[0].push()
+    except Exception as ex:
+        print("Could not push commit: " + str(ex))
     
 def print_info():
     print ("=== release scipt successfully finished!")
@@ -138,7 +149,7 @@ if __name__ == "__main__":
         release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, distribution_version)
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
         verify_new_distribution()
-        push_distribution()
+        push_distribution(citk_path, distribution_release_name, distribution_version)
         print_info()
     except Exception as ex:
         print("could not release " + colored("rc", 'red') + "!")
