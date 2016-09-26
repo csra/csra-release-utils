@@ -25,13 +25,7 @@ from __future__ import print_function
 import argparse
 from git import *
 from git.objects.base import *
-import os
-import shutil
 from termcolor import colored
-import getpass
-import json
-from collections import OrderedDict
-import json
 from os import system
 from os.path import expanduser
 
@@ -129,7 +123,7 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser(description='Script release the current release candidate.')
         parser.add_argument("--citk", default=citk_path, help='Path to the citk project which contains the project and distribution descriptions.')
         parser.add_argument("--distribution", default=distribution_name, help='The name of the release candidate distribution.')
-        parser.add_argument("--version", help='The version which is used for the release.')
+        parser.add_argument("--version", help='The version which is used for the release.', required = True)
         parser.add_argument("-v", default=verbose_flag, help='Enable this verbose flag to get more logging and exception printing during application errors.', action='store_true')
         args = parser.parse_args()
         citk_path = args.citk
@@ -138,9 +132,7 @@ if __name__ == "__main__":
         verbose_flag = args.v
         
         # post init
-        tmp_repo_directory = "/tmp/" + str(getpass.getuser()) + "/"
         distribution_file_uri = citk_path + "/distributions/" + distribution_name + ".distribution"
-        distribution_tmp_file_uri = citk_path + "/distributions/." + distribution_name + ".distribution.tmp"
         distribution_release_name = "lsp-csra-" + distribution_version
         distribution_release_uri = citk_path + "/distributions/" + distribution_release_name + ".distribution"
         
@@ -148,8 +140,7 @@ if __name__ == "__main__":
         distribution_report = create_distribution_file(distribution_file_uri, distribution_release_uri, distribution_version)
         release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, distribution_version)
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
-        verify_new_distribution()
-        push_distribution(citk_path, distribution_release_name, distribution_version)
+        #push_distribution(citk_path, distribution_release_name, distribution_version)
         print_info()
     except Exception as ex:
         print("could not release " + colored("rc", 'red') + "!")
