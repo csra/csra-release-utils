@@ -33,6 +33,7 @@ import json
 from collections import OrderedDict
 import json
 from os import system
+from os.path import expanduser
     
 def detect_upgradable_projects():
     print ("detect upgradeable projects...")
@@ -44,8 +45,10 @@ def create_distribution_file(distribution_file, distribution_release_file):
 def release_related_projects():
     print ("release releated projects...")
 
-def upgrade_versions_in_new_distribution():
+def upgrade_versions_in_new_distribution(projects, citk_path, distribution_name):
     print ("upgrade versions in new distribution...")
+    for project in projects:
+        system("citk-version-updater --citk "+str(citk_path)+" --project "+str(project)+" --distribution "+str(distribution_name))
     
 def appliy_custom_release_modifications():
     print ("prepare new distribution for release...")
@@ -69,11 +72,10 @@ if __name__ == "__main__":
     distribution_name = "lsp-csra-rc"
     distribution_version = "0.4"
     
-    # start release pipeline
     try:
         
         # init
-        citk_path = "/home/" + str(getpass.getuser()) + "/workspace/csra/citk"
+        citk_path = expanduser("~") + "/workspace/csra/citk"
 
         # parse command line
         parser = argparse.ArgumentParser(description='Script release the current release candidate.')
@@ -96,7 +98,7 @@ if __name__ == "__main__":
         detect_upgradable_projects()
         create_distribution_file(distribution_file_uri, distribution_release_uri)
         release_related_projects()
-        upgrade_versions_in_new_distribution()
+        upgrade_versions_in_new_distribution(projects, citk_path, release_distribution_name)
         appliy_custom_release_modifications()
         verify_new_distribution()
         push_distribution()
