@@ -76,35 +76,38 @@ def create_distribution_file(distribution_file, distribution_release_file, distr
 
     return DistributionReport(projects_to_upgrade, projects_to_release)
 
-def release_related_projects(projects_to_release):
+def release_related_projects(projects_to_release, citk_path, distribution_release_name, release_version):
     print ("release releated projects...")
+    for project_description in projects_to_release:
+        system("citk-version-updater --citk "+str(citk_path)+" --project "+str(project_description.project_name)+" --distribution "+str(distribution_release_name)+" --version "+str(release_version))
 
 def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name):
     print ("upgrade versions in new distribution...")
     for project in projects_to_upgrade:
         system("citk-version-updater --citk "+str(citk_path)+" --project "+str(project)+" --distribution "+str(distribution_release_name))
     
-def appliy_custom_release_modifications():
-    print ("prepare new distribution for release...")
+#def appliy_custom_release_modifications():
+#    print ("prepare new distribution for release...")
     
-def verify_new_distribution():
-    print ("verify new distribution...")
+#def verify_new_distribution():
+#    print ("verify new distribution...")
     
 def push_distribution():
     print ("push distribution...")
     
-def create_release_folder_structure():
-    print ("create release folder structure")
-    
-def create_new_jenkins_entries():
-    print ("create jenkins entries...")
-    system("./test-script.py")
+def print_info():
+    print ("=== release scipt successfully finished!")
+    print ("=== your next steps should be:")
+    print ("     *  backup local models, images and data stored at the core maschines!")
+    print ("     *  create jenkins scripts")
+    print ("     *  informe the other developer about the new release!")
         
 if __name__ == "__main__":
     
     # pre init
     distribution_name = "lsp-csra-rc"
-    distribution_version = "0.4"
+    distribution_version = ""
+    verbose_flag = False
     
     try:
         
@@ -115,11 +118,13 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser(description='Script release the current release candidate.')
         parser.add_argument("--citk", default=citk_path, help='Path to the citk project which contains the project and distribution descriptions.')
         parser.add_argument("--distribution", default=distribution_name, help='The name of the release candidate distribution.')
-        parser.add_argument("--version", default=distribution_version, help='The version which is used for the release.')
+        parser.add_argument("--version", help='The version which is used for the release.')
+        parser.add_argument("-v", default=verbose_flag, help='Enable this verbose flag to get more logging and exception printing during application errors.', action='store_true')
         args = parser.parse_args()
         citk_path = args.citk
         distribution_name = args.distribution
         distribution_version = args.version
+        verbose_flag = args.v
         
         # post init
         tmp_repo_directory = "/tmp/" + str(getpass.getuser()) + "/"
@@ -130,19 +135,19 @@ if __name__ == "__main__":
         
         # start release pipeline
         distribution_report = create_distribution_file(distribution_file_uri, distribution_release_uri, distribution_version)
-        release_related_projects(distribution_report.projects_to_release)
+        release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, distribution_version)
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
-        appliy_custom_release_modifications()
         verify_new_distribution()
         push_distribution()
-        create_release_folder_structure()
-        create_new_jenkins_entries()
+        print_info()
     except Exception as ex:
         print("could not release " + colored("rc", 'red') + "!")
         if ex.message:
             print("error: "+ex.message)
+            if verbose_flag:
+                print (ex)
         exit(1)
-    print ("successfully finished.")
+    
     exit(0)
   
                    
