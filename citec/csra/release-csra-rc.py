@@ -90,8 +90,16 @@ def appliy_custom_release_modifications():
 def verify_new_distribution():
     print ("verify new distribution...")
     
-def push_distribution():
+def push_distribution(citk_path, distribution_release_file, distribution_version):
     print ("push distribution...")
+    repo = Repo(citk_path)
+    index = repo.index
+    relative_dist_path = "distributions/" + distribution_release_file + ".distribution"
+    #print("add distrubtion_file " + relative_dist_path)
+    index.add([relative_dist_path])
+    index.commit("released version " + distribution_version + " from rc")
+    #print("remote " + str(repo.remotes[0]))
+    repo.remotes[0].push()
     
 def create_release_folder_structure():
     print ("create release folder structure")
@@ -134,7 +142,7 @@ if __name__ == "__main__":
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
         appliy_custom_release_modifications()
         verify_new_distribution()
-        push_distribution()
+        push_distribution(citk_path, distribution_release_name, distribution_version)
         create_release_folder_structure()
         create_new_jenkins_entries()
     except Exception as ex:
