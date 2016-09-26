@@ -37,10 +37,11 @@ from os.path import expanduser
     
 def detect_upgradable_projects():
     print ("detect upgradeable projects...")
+    return ""
 
 def create_distribution_file(distribution_file, distribution_release_file):
     print ("create distribution " + str(distribution_release_file) + " ...")
-    shutil.copy(distribution_file, new_distribution_file)
+    shutil.copy(distribution_file, distribution_release_file)
 
 def release_related_projects():
     print ("release releated projects...")
@@ -95,10 +96,10 @@ if __name__ == "__main__":
         distribution_release_uri = citk_path + "/distributions/" + distribution_release_name + ".distribution"
         
         # start release pipeline
-        detect_upgradable_projects()
+        projects = detect_upgradable_projects()
         create_distribution_file(distribution_file_uri, distribution_release_uri)
         release_related_projects()
-        upgrade_versions_in_new_distribution(projects, citk_path, release_distribution_name)
+        upgrade_versions_in_new_distribution(projects, citk_path, distribution_release_name)
         appliy_custom_release_modifications()
         verify_new_distribution()
         push_distribution()
