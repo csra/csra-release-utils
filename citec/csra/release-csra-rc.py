@@ -48,27 +48,33 @@ class DistributionReport(object):
 
 def create_distribution_file(distribution_file, distribution_release_file, distribution_version):
     print ("create distribution " + str(distribution_release_file) + " ...")
+    projects_to_upgrade = []
+    projects_to_release = []
     with open(distribution_release_file, 'w') as release_file:
         with open(distribution_file) as dist_file:
             for line in dist_file.readlines():
                 if "\"latest-stable\"" in line:
-                    print("found latest stable " + line)
+                    #print("found latest stable " + line.split('"')[1])
+                    projects_to_upgrade.append("'" + line.split('"')[1] + "'")
                 if "\"master\"" in line:
-                    print("found master " + line)
+                    #print("found master " + line.split('"')[1])
+                    projects_to_release.append(ProjectDescription(line.split('"')[1], "master"))
                 if "\"rc\"" in line:
-                    print("found rc " + line)
+                    project_name = line.split('"')[1]
+                    if project_name != "variant":
+                        #print("found rc " + line.split('"')[1])
+                        projects_to_release.append(ProjectDescription(project_name, "rc"))
                 if "\"name\"" in line:
                     context = line.split(':')
                     context[1] = " \"lsp-csra-" + distribution_version + "\",\n"
                     line = ':'.join(context)
                 if "\"variant\"" in line:
-                    print("found variant " + line)
                     context = line.split(':')
                     context[1] = " \"" + distribution_version + "\",\n"
                     line = ':'.join(context)
                 release_file.write(line)
 
-    return DistributionReport(['jul', 'bco.dal'], [ProjectDescription("lsp-csra.system-startup", "rc"), ProjectDescription("bco.registry.csra-db", "master")])
+    return DistributionReport(projects_to_upgrade, projects_to_release)
 
 def release_related_projects(projects_to_release):
     print ("release releated projects...")
