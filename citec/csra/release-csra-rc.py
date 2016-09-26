@@ -34,40 +34,50 @@ from collections import OrderedDict
 import json
 from os import system
 from os.path import expanduser
-    
-def detect_upgradable_projects():
-    print ("detect upgradeable projects...")
-    return ""
+
+# data type definition
+class ProjectDescription(object):
+    def __init__(self, project_name, project_version):
+        self.project_name = project_name
+        self.project_version = project_version
+        
+class DistributionReport(object):
+    def __init__(self, projects_to_upgrade, projects_to_release):
+        self.projects_to_upgrade = projects_to_upgrade
+        self.projects_to_release = projects_to_release
 
 def create_distribution_file(distribution_file, distribution_release_file, distribution_version):
     print ("create distribution " + str(distribution_release_file) + " ...")
-    with open(distribution_release_file, 'w') as release_file
-        with open(distribution_file) as dist_file
-            for line in dist_file.readLines():
-                if "latest-stable" in line
+    with open(distribution_release_file, 'w') as release_file:
+        with open(distribution_file) as dist_file:
+            for line in dist_file.readlines():
+                if "\"latest-stable\"" in line:
                     print("found latest stable [" + line.split('"')[1])
-                if "master" in line 
+                if "\"master\"" in line:
                     print("found master [" + line.split('"')[1])
-                if "rc" in line
+                if "\"rc\"" in line:
                     print("found rc [" + line.split('"')[1])
-                if "\"name\"" in line
+                if "\"name\"" in line:
                     context = line.split(':')
                     context[1] = " \"lsp-csra-" + distribution_version + "\"",
                     line = ':'.join(context)
                     print("replaced dist name: " + line)
-                if "\"variant\"" in line
+                if "\"variant\"" in line:
                     context = line.split(':')
                     context[1] = " \"" + distribution_version + "\"",
-                    
+                    line = ':'.join(context)
+                    print("replaced variant: " + line)
                 release_file.write(line)
 
-def release_related_projects():
+    return DistributionReport(['jul', 'bco.dal'], [ProjectDescription("lsp-csra.system-startup", "rc"), ProjectDescription("bco.registry.csra-db", "master")])
+
+def release_related_projects(projects_to_release):
     print ("release releated projects...")
 
-def upgrade_versions_in_new_distribution(projects, citk_path, distribution_name):
+def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name):
     print ("upgrade versions in new distribution...")
-    for project in projects:
-        system("citk-version-updater --citk "+str(citk_path)+" --project "+str(project)+" --distribution "+str(distribution_name))
+    for project in projects_to_upgrade:
+        system("citk-version-updater --citk "+str(citk_path)+" --project "+str(project)+" --distribution "+str(distribution_release_name))
     
 def appliy_custom_release_modifications():
     print ("prepare new distribution for release...")
@@ -114,10 +124,9 @@ if __name__ == "__main__":
         distribution_release_uri = citk_path + "/distributions/" + distribution_release_name + ".distribution"
         
         # start release pipeline
-        projects = detect_upgradable_projects()
-        create_distribution_file(distribution_file_uri, distribution_release_uri, distribution_version)
-        release_related_projects()
-        upgrade_versions_in_new_distribution(projects, citk_path, distribution_release_name)
+        distribution_report = create_distribution_file(distribution_file_uri, distribution_release_uri, distribution_version)
+        release_related_projects(distribution_report.projects_to_release)
+        upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
         appliy_custom_release_modifications()
         verify_new_distribution()
         push_distribution()
