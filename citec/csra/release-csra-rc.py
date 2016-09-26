@@ -99,7 +99,10 @@ def push_distribution(citk_path, distribution_release_file, distribution_version
     index.add([relative_dist_path])
     index.commit("released version " + distribution_version + " from rc")
     #print("remote " + str(repo.remotes[0]))
-    repo.remotes[0].push()
+    try:
+        repo.remotes[0].push()
+    except Exception as ex:
+        print("Could not push commit: " + str(ex))
     
 def create_release_folder_structure():
     print ("create release folder structure")
