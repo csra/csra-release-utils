@@ -37,8 +37,9 @@ from os import system
 def detect_upgradable_projects():
     print ("detect upgradeable projects...")
 
-def create_distribution_file(version):
-    print ("create distribution " + str(version) + " ...") 
+def create_distribution_file(distribution_file, distribution_release_file):
+    print ("create distribution " + str(distribution_release_file) + " ...")
+    shutil.copy(distribution_file, new_distribution_file)
 
 def release_related_projects():
     print ("release releated projects...")
@@ -88,10 +89,12 @@ if __name__ == "__main__":
         tmp_repo_directory = "/tmp/" + str(getpass.getuser()) + "/"
         distribution_file_uri = citk_path + "/distributions/" + distribution_name + ".distribution"
         distribution_tmp_file_uri = citk_path + "/distributions/." + distribution_name + ".distribution.tmp"
+        distribution_release_name = "lsp-csra-" + distribution_version
+        distribution_release_uri = citk_path + "/distributions/" + distribution_release_name + ".distribution"
         
         # start release pipeline
         detect_upgradable_projects()
-        create_distribution_file(distribution_file_uri)
+        create_distribution_file(distribution_file_uri, distribution_release_uri)
         release_related_projects()
         upgrade_versions_in_new_distribution()
         appliy_custom_release_modifications()
