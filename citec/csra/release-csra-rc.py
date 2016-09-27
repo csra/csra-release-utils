@@ -81,7 +81,7 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
         for project_description in projects_to_release:
             project_repository_url = detect_repository_url(project_description.project_name, citk_path)
             if not project_repository_url:
-                print("" + colored("ERROR", 'red') + ": " + colored("could not detect repository url", 'red') + " of " + colored(project_description.project_name, 'blue') + "! Skip release of this project!")
+                print(colored("ERROR", 'red') + ": " + colored("could not detect repository url", 'red') + " of " + colored(project_description.project_name, 'blue') + "! Skip release of this project!")
                 continue
 
             print("create release branch " + colored(release_version, 'blue') + " of project " + project_description.project_name + " from branch " + colored(project_description.project_version, 'blue') + "...")
@@ -125,10 +125,10 @@ def push_distribution(citk_path, distribution_release_file, distribution_version
     
 def print_info():
     print ("=== " + colored("release scipt successfully finished", 'green') + " ===")
-    print ("=== your next steps should be:")
-    print ("     *  backup local models, images and data stored at the core maschines!")
-    print ("     *  create jenkins scripts")
-    print ("     *  inform the other developers about the new release!")
+    print ("=== "+colored("your next steps should be", 'blue')+" ===")
+    print ("     "+colored("*", 'blue')+"  backup local models, images and data stored at the core maschines!")
+    print ("     "+colored("*", 'blue')+"  create jenkins scripts")
+    print ("     "+colored("*", 'blue')+"  inform the other developers about the new release!")
     
 def detect_repository_url(project_name, citk_path):
     project_file_name = citk_path + "/projects/" + project_name + ".project"
