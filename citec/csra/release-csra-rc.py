@@ -71,7 +71,32 @@ def create_distribution_file(distribution_file, distribution_release_file, distr
     return DistributionReport(projects_to_upgrade, projects_to_release)
 
 def release_related_projects(projects_to_release, citk_path, distribution_release_name, release_version):
-    print ("release releated projects...")
+    print ("=== release releated projects ===")
+    
+    tmp_folder = "/tmp/" + str(getpass.getuser()) + "/csra-release"
+    try:
+    
+        # release projects
+        for project_description in projects_to_release:
+            project_repository_url = detect_repository_url(project_description.project_name, citk_path)
+            if not project_repository_url:
+                print("error: " + colored("could not detect repository url", 'red') + " of " + colored(project_description.project_name, 'blue') + "! Skip release of this project!")
+                continue
+
+            print("release " + release_version + " of project " + project_description.project_name + " from branch " + colored(project_description.project_version, 'blue') + "...")
+            git_repo = Repo.clone_from(project_repository_url, tmp_folder + "/" + project_description.project_name, branch=project_description.project_version)
+            try:
+                new_tag = git_repo.create_tag(release_version, message='Automatic release of tag "{0}"'.format(release_version)) 
+
+            except Exception as ex:
+                print(colored("ERROR:", 'red') + " Could not tag project " + colored(project_description.project_name, 'blue') + "! Tag " + colored(release_version, 'blue') + " may already exist?")
+                continue
+            #git_repo.remotes.origin.push(new_tag)
+    # cleanup
+    finally:
+        shutil.rmtree(tmp_folder)
+    
+    # upgrade versions in distribution file
     for project_description in projects_to_release:
         system("citk-version-updater --citk " + str(citk_path) + " --project " + str(project_description.project_name) + " --distribution " + str(distribution_release_name) + " -v --version " + str(release_version))
 
@@ -79,12 +104,6 @@ def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distrib
     print ("upgrade versions in new distribution...")
     for project in projects_to_upgrade:
         system("citk-version-updater --citk " + str(citk_path) + " --project " + str(project) + " -v --distribution " + str(distribution_release_name))
-    
-#def appliy_custom_release_modifications():
-#    print ("prepare new distribution for release...")
-    
-#def verify_new_distribution():
-#    print ("verify new distribution...")
     
 def push_distribution(citk_path, distribution_release_file, distribution_version):
     print ("push distribution...")
@@ -141,7 +160,7 @@ if __name__ == "__main__":
         
         # start release pipeline
         distribution_report = create_distribution_file(distribution_file_uri, distribution_release_uri, distribution_version)
-        release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, "release-" +str(distribution_version))
+        release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, "release-" + str(distribution_version))
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
         #push_distribution(citk_path, distribution_release_name, distribution_version)
         print_info()
