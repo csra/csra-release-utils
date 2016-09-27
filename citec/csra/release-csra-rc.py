@@ -29,7 +29,10 @@ from os import system
 from os.path import expanduser
 from termcolor import colored
 import json
+import getpass
 from collections import OrderedDict
+import shutil
+import traceback
 
 # data type definition
 class ProjectDescription(object):
@@ -43,7 +46,7 @@ class DistributionReport(object):
         self.projects_to_release = projects_to_release
 
 def create_distribution_file(distribution_file, distribution_release_file, distribution_version):
-    print ("create distribution " + str(distribution_release_file) + " ...")
+    print ("=== " + colored("create distribution " + str(distribution_release_file), 'green') + " ===")
     projects_to_upgrade = []
     projects_to_release = []
     with open(distribution_release_file, 'w') as release_file:
@@ -70,27 +73,27 @@ def create_distribution_file(distribution_file, distribution_release_file, distr
     return DistributionReport(projects_to_upgrade, projects_to_release)
 
 def release_related_projects(projects_to_release, citk_path, distribution_release_name, release_version):
-    print ("=== release releated projects ===")
+    print ("=== " + colored("release related projects", 'green') + " ===")
     
     tmp_folder = "/tmp/" + str(getpass.getuser()) + "/csra-release"
     try:
-    
         # release projects
         for project_description in projects_to_release:
             project_repository_url = detect_repository_url(project_description.project_name, citk_path)
             if not project_repository_url:
-                print("error: " + colored("could not detect repository url", 'red') + " of " + colored(project_description.project_name, 'blue') + "! Skip release of this project!")
+                print("" + colored("ERROR", 'red') + ": " + colored("could not detect repository url", 'red') + " of " + colored(project_description.project_name, 'blue') + "! Skip release of this project!")
                 continue
 
-            print("release " + release_version + " of project " + project_description.project_name + " from branch " + colored(project_description.project_version, 'blue') + "...")
+            print("create release branch " + colored(release_version, 'blue') + " of project " + project_description.project_name + " from branch " + colored(project_description.project_version, 'blue') + "...")
             git_repo = Repo.clone_from(project_repository_url, tmp_folder + "/" + project_description.project_name, branch=project_description.project_version)
             try:
-                new_tag = git_repo.create_tag(release_version, message='Automatic release of tag "{0}"'.format(release_version)) 
-
+                git_repo.git.checkout(b=str(release_version))
             except Exception as ex:
-                print(colored("ERROR:", 'red') + " Could not tag project " + colored(project_description.project_name, 'blue') + "! Tag " + colored(release_version, 'blue') + " may already exist?")
+                print(colored("ERROR:", 'red') + " Could not branch project " + colored(project_description.project_name, 'blue') + "! Branch " + colored(release_version, 'blue') + " may already exist?")
+                if verbose_flag:
+                    traceback.print_exc()
                 continue
-            #git_repo.remotes.origin.push(new_tag)
+            git_repo.remotes.origin.push(str(release_version))
     # cleanup
     finally:
         shutil.rmtree(tmp_folder)
@@ -100,16 +103,18 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
         system("citk-version-updater --citk " + str(citk_path) + " --project " + str(project_description.project_name) + " --distribution " + str(distribution_release_name) + " -v --version " + str(release_version))
 
 def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name):
-    print ("upgrade versions in new distribution...")
+    print ("=== " + colored("upgrade versions in new distribution", 'green') + " ===")
+    
     for project in projects_to_upgrade:
         system("citk-version-updater --citk " + str(citk_path) + " --project " + str(project) + " -v --distribution " + str(distribution_release_name))
     
 def push_distribution(citk_path, distribution_release_file, distribution_version):
-    print ("push distribution...")
+    print ("=== " + colored("push distribution", 'green') + " ===")
     repo = Repo(citk_path)
     index = repo.index
     relative_dist_path = "distributions/" + distribution_release_file + ".distribution"
     #print("add distrubtion_file " + relative_dist_path)
+    
     index.add([relative_dist_path])
     index.commit("released version " + distribution_version + " from rc")
     #print("remote " + str(repo.remotes[0]))
@@ -123,9 +128,9 @@ def print_info():
     print ("=== your next steps should be:")
     print ("     *  backup local models, images and data stored at the core maschines!")
     print ("     *  create jenkins scripts")
-    print ("     *  informe the other developer about the new release!")
+    print ("     *  inform the other developers about the new release!")
     
-def detect_repository_url(projetc_name, citk_path):
+def detect_repository_url(project_name, citk_path):
     project_file_name = citk_path + "/projects/" + project_name + ".project"
     with open(project_file_name, "r+") as project_file:
         data = json.load(project_file, object_pairs_hook=OrderedDict, encoding="utf-8")
@@ -173,9 +178,9 @@ if __name__ == "__main__":
     except Exception as ex:
         print("could not release " + colored("rc", 'red') + "!")
         if ex.message:
-            print("error: " + ex.message)
-            if verbose_flag:
-                print (ex)
+            print(colored("ERROR", 'red') + ": " + ex.message)
+        if verbose_flag:
+            traceback.print_exc()            
         exit(1)
     
     exit(0)
