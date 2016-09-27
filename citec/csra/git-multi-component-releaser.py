@@ -22,15 +22,12 @@
 
 # import
 from __future__ import print_function
-import argparse
 from git import *
 from git.objects.base import *
-import os
 import shutil
 from termcolor import colored
 import getpass
 import json
-from collections import OrderedDict
 import json
 
 

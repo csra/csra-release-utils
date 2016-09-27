@@ -25,9 +25,9 @@ from __future__ import print_function
 import argparse
 from git import *
 from git.objects.base import *
-from termcolor import colored
 from os import system
 from os.path import expanduser
+from termcolor import colored
 
 # data type definition
 class ProjectDescription(object):
@@ -73,12 +73,12 @@ def create_distribution_file(distribution_file, distribution_release_file, distr
 def release_related_projects(projects_to_release, citk_path, distribution_release_name, release_version):
     print ("release releated projects...")
     for project_description in projects_to_release:
-        system("citk-version-updater --citk "+str(citk_path)+" --project "+str(project_description.project_name)+" --distribution "+str(distribution_release_name)+" --version "+str(release_version))
+        system("citk-version-updater --citk " + str(citk_path) + " --project " + str(project_description.project_name) + " --distribution " + str(distribution_release_name) + " -v --version " + str(release_version))
 
 def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name):
     print ("upgrade versions in new distribution...")
     for project in projects_to_upgrade:
-        system("citk-version-updater --citk "+str(citk_path)+" --project "+str(project)+" --distribution "+str(distribution_release_name))
+        system("citk-version-updater --citk " + str(citk_path) + " --project " + str(project) + " -v --distribution " + str(distribution_release_name))
     
 #def appliy_custom_release_modifications():
 #    print ("prepare new distribution for release...")
@@ -101,7 +101,7 @@ def push_distribution(citk_path, distribution_release_file, distribution_version
         print("Could not push commit: " + str(ex))
     
 def print_info():
-    print ("=== release scipt successfully finished!")
+    print ("=== " + colored("release scipt successfully finished", 'green') + " ===")
     print ("=== your next steps should be:")
     print ("     *  backup local models, images and data stored at the core maschines!")
     print ("     *  create jenkins scripts")
@@ -123,7 +123,7 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser(description='Script release the current release candidate.')
         parser.add_argument("--citk", default=citk_path, help='Path to the citk project which contains the project and distribution descriptions.')
         parser.add_argument("--distribution", default=distribution_name, help='The name of the release candidate distribution.')
-        parser.add_argument("--version", help='The version which is used for the release.', required = True)
+        parser.add_argument("--version", help='The version which is used for the release.', required=True)
         parser.add_argument("-v", default=verbose_flag, help='Enable this verbose flag to get more logging and exception printing during application errors.', action='store_true')
         args = parser.parse_args()
         citk_path = args.citk
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     except Exception as ex:
         print("could not release " + colored("rc", 'red') + "!")
         if ex.message:
-            print("error: "+ex.message)
+            print("error: " + ex.message)
             if verbose_flag:
                 print (ex)
         exit(1)
