@@ -106,7 +106,10 @@ def print_info():
     print ("     *  backup local models, images and data stored at the core maschines!")
     print ("     *  create jenkins scripts")
     print ("     *  informe the other developer about the new release!")
-        
+    
+def detect_repository_url(projetc_name, citk_path):
+    print ("do magic")
+    
 if __name__ == "__main__":
     
     # pre init
@@ -138,7 +141,7 @@ if __name__ == "__main__":
         
         # start release pipeline
         distribution_report = create_distribution_file(distribution_file_uri, distribution_release_uri, distribution_version)
-        release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, distribution_version)
+        release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, "release-" +str(distribution_version))
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
         #push_distribution(citk_path, distribution_release_name, distribution_version)
         print_info()
