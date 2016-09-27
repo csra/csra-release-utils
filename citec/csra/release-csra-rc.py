@@ -28,6 +28,8 @@ from git.objects.base import *
 from os import system
 from os.path import expanduser
 from termcolor import colored
+import json
+from collections import OrderedDict
 
 # data type definition
 class ProjectDescription(object):
@@ -48,15 +50,12 @@ def create_distribution_file(distribution_file, distribution_release_file, distr
         with open(distribution_file) as dist_file:
             for line in dist_file.readlines():
                 if "\"latest-stable\"" in line:
-                    #print("found latest stable " + line.split('"')[1])
                     projects_to_upgrade.append("'" + line.split('"')[1] + "'")
                 if "\"master\"" in line:
-                    #print("found master " + line.split('"')[1])
                     projects_to_release.append(ProjectDescription(line.split('"')[1], "master"))
                 if "\"rc\"" in line:
                     project_name = line.split('"')[1]
                     if project_name != "variant":
-                        #print("found rc " + line.split('"')[1])
                         projects_to_release.append(ProjectDescription(project_name, "rc"))
                 if "\"name\"" in line:
                     context = line.split(':')
@@ -127,8 +126,15 @@ def print_info():
     print ("     *  informe the other developer about the new release!")
     
 def detect_repository_url(projetc_name, citk_path):
-    print ("do magic")
-    
+    project_file_name = citk_path + "/projects/" + project_name + ".project"
+    with open(project_file_name, "r+") as project_file:
+        data = json.load(project_file, object_pairs_hook=OrderedDict, encoding="utf-8")
+        # check if repository is defined
+        if data["variables"]["repository"]:
+            return data["variables"]["repository"]
+        else:
+            return None
+ 
 if __name__ == "__main__":
     
     # pre init
@@ -157,7 +163,7 @@ if __name__ == "__main__":
         distribution_file_uri = citk_path + "/distributions/" + distribution_name + ".distribution"
         distribution_release_name = "lsp-csra-" + distribution_version
         distribution_release_uri = citk_path + "/distributions/" + distribution_release_name + ".distribution"
-        
+
         # start release pipeline
         distribution_report = create_distribution_file(distribution_file_uri, distribution_release_uri, distribution_version)
         release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, "release-" + str(distribution_version))
