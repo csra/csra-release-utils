@@ -100,13 +100,13 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
     
     # upgrade versions in distribution file
     for project_description in projects_to_release:
-        system("citk-version-updater --citk " + str(citk_path) + " --project " + str(project_description.project_name) + " --distribution " + str(distribution_release_name) + " -v --version " + str(release_version))
+        system("citk-version-updater.py --citk " + str(citk_path) + " --project " + str(project_description.project_name) + " --distribution " + str(distribution_release_name) + " -v --version " + str(release_version))
 
 def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name):
     print ("=== " + colored("upgrade versions in new distribution", 'green') + " ===")
     
     for project in projects_to_upgrade:
-        system("citk-version-updater --citk " + str(citk_path) + " --project " + str(project) + " -v --distribution " + str(distribution_release_name))
+        system("citk-version-updater.py --citk " + str(citk_path) + " --project " + str(project) + " -v --distribution " + str(distribution_release_name))
     
 def push_distribution(citk_path, distribution_release_file, distribution_version):
     print ("=== " + colored("push distribution", 'green') + " ===")
