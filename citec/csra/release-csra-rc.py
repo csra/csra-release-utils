@@ -131,6 +131,8 @@ def print_info():
     print ("     "+colored("*", 'blue')+"  inform the other developers about the new release!")
     
 def detect_repository_url(project_name, citk_path):
+    if verbose_flag:
+        print ("detect repository url of project "+colored(project_name, 'blue'))
     project_file_name = citk_path + "/projects/" + project_name + ".project"
     with open(project_file_name, "r+") as project_file:
         data = json.load(project_file, object_pairs_hook=OrderedDict, encoding="utf-8")
