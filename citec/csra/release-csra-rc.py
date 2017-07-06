@@ -25,6 +25,7 @@ from __future__ import print_function
 import argparse
 from git import *
 from git.objects.base import *
+import os
 from os import system
 from os.path import expanduser
 from termcolor import colored
@@ -49,25 +50,33 @@ def create_distribution_file(distribution_file, distribution_release_file, distr
     print ("=== " + colored("create distribution " + str(distribution_release_file), 'green') + " ===")
     projects_to_upgrade = []
     projects_to_release = []
+    version_section_detected = False
+
     with open(distribution_release_file, 'w') as release_file:
         with open(distribution_file) as dist_file:
             for line in dist_file.readlines():
-                if "\"latest-stable\"" in line:
-                    projects_to_upgrade.append("'" + line.split('"')[1] + "'")
-                if "\"master\"" in line:
-                    projects_to_release.append(ProjectDescription(line.split('"')[1], "master"))
-                if "\"rc\"" in line:
-                    project_name = line.split('"')[1]
-                    if project_name != "variant":
-                        projects_to_release.append(ProjectDescription(project_name, "rc"))
-                if "\"name\"" in line:
-                    context = line.split(':')
-                    context[1] = " \"lsp-csra-" + distribution_version + "\",\n"
-                    line = ':'.join(context)
-                if "\"variant\"" in line:
-                    context = line.split(':')
-                    context[1] = " \"" + distribution_version + "\",\n"
-                    line = ':'.join(context)
+
+                if "\"versions\":" in line:
+                    version_section_detected = True
+                
+                if version_section_detected:
+                    if "\"latest-stable\"" in line:
+                        projects_to_upgrade.append("'" + line.split('"')[1] + "'")
+                    if "\"master\"" in line:
+                        projects_to_release.append(ProjectDescription(line.split('"')[1], "master"))
+                    if "\"rc\"" in line:
+                        project_name = line.split('"')[1]
+                        if project_name != "variant":
+                            projects_to_release.append(ProjectDescription(project_name, "rc"))
+                    if "\"name\"" in line:
+                        context = line.split(':')
+                        context[1] = " \"lsp-csra-" + distribution_version + "\",\n"
+                        line = ':'.join(context)
+                    if "\"variant\"" in line:
+                        context = line.split(':')
+                        context[1] = " \"" + distribution_version + "\",\n"
+                        line = ':'.join(context)
+
                 release_file.write(line)
 
     return DistributionReport(projects_to_upgrade, projects_to_release)
@@ -96,7 +105,8 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
             git_repo.remotes.origin.push(str(release_version))
     # cleanup
     finally:
-        shutil.rmtree(tmp_folder)
+        if os.path.exists(tmp_folder):
+            shutil.rmtree(tmp_folder)
     
     # upgrade versions in distribution file
     for project_description in projects_to_release:
@@ -134,6 +144,14 @@ def detect_repository_url(project_name, citk_path):
     if verbose_flag:
         print ("detect repository url of project "+colored(project_name, 'blue'))
     project_file_name = citk_path + "/projects/" + project_name + ".project"
+    
+    if verbose_flag:
+        print ("try to open project: "+colored(project_file_name, 'blue'))
+
+    if not os.path.isfile(project_file_name):
+        print(colored("ERROR", 'red') + ": detected project file "+colored(project_file_name, 'blue') + " does not exists!")
+        exit(22)
+
     with open(project_file_name, "r+") as project_file:
         data = json.load(project_file, object_pairs_hook=OrderedDict, encoding="utf-8")
         # check if repository is defined
