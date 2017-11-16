@@ -136,8 +136,8 @@ def push_distribution(citk_path, distribution_release_file, distribution_version
 def print_info():
     print ("=== " + colored("release scipt successfully finished", 'green') + " ===")
     print ("=== "+colored("your next steps should be", 'blue')+" ===")
-    print ("     "+colored("*", 'blue')+"  backup local models, images and data stored at the core maschines!")
-    print ("     "+colored("*", 'blue')+"  create jenkins scripts")
+    print ("     "+colored("*", 'blue')+"  backup local models, images and data stored at the core machines!")
+    print ("     "+colored("*", 'blue')+"  create jenkins release sync and generate distribution scripts.")
     print ("     "+colored("*", 'blue')+"  inform the other developers about the new release!")
     
 def detect_repository_url(project_name, citk_path):
@@ -154,11 +154,19 @@ def detect_repository_url(project_name, citk_path):
 
     with open(project_file_name, "r+") as project_file:
         data = json.load(project_file, object_pairs_hook=OrderedDict, encoding="utf-8")
+
         # check if repository is defined
+
+        if not 'repository' in data["variables"]:
+            print(colored("ERROR", 'red') + ": no scm repository was not declared in project file "+colored(project_file_name, 'blue') + " which is needed for the auto project release!")
+            exit(23)
+
+        
         if data["variables"]["repository"]:
-            return data["variables"]["repository"]
+             return data["variables"]["repository"]
         else:
-            return None
+            print(colored("ERROR", 'red') + ": no scm repository was not declared in project file "+colored(project_file_name, 'blue') + " which is needed for the auto project release!")
+            exit(23)
  
 if __name__ == "__main__":
     
