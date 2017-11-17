@@ -34,6 +34,7 @@ import getpass
 from collections import OrderedDict
 import shutil
 import traceback
+import fileinput
 
 # data type definition
 class ProjectDescription(object):
@@ -52,10 +53,11 @@ def create_distribution_file(distribution_file, distribution_release_file, distr
     projects_to_release = []
     version_section_detected = False
 
+    # collect project informations
     with open(distribution_release_file, 'w') as release_file:
         with open(distribution_file) as dist_file:
             for line in dist_file.readlines():
-
+                
                 if "\"versions\":" in line:
                     version_section_detected = True
                 
@@ -68,6 +70,8 @@ def create_distribution_file(distribution_file, distribution_release_file, distr
                         project_name = line.split('"')[1]
                         if project_name != "variant":
                             projects_to_release.append(ProjectDescription(project_name, "rc"))
+                else:
+                    # rename rc into release name
                     if "\"name\"" in line:
                         context = line.split(':')
                         context[1] = " \"lsp-csra-" + distribution_version + "\",\n"
@@ -193,7 +197,7 @@ if __name__ == "__main__":
         distribution_report = create_distribution_file(distribution_file_uri, distribution_release_uri, distribution_version)
         release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, "release-" + str(distribution_version))
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
-        #push_distribution(citk_path, distribution_release_name, distribution_version)
+        # autopush disabled: push_distribution(citk_path, distribution_release_name, distribution_version)
         print_info()
     except Exception as ex:
         print("could not release " + colored("rc", 'red') + "!")
