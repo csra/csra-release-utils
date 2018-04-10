@@ -175,8 +175,8 @@ def detect_repository_url(project_name, citk_path):
 if __name__ == "__main__":
     
     # pre init
-    distribution_name = "lsp-csra-rc"
-    distribution_version = ""
+    distribution_name = "lsp-csra"
+    distribution_version = "rc"
     verbose_flag = False
     
     try:
@@ -187,8 +187,8 @@ if __name__ == "__main__":
         # parse command line
         parser = argparse.ArgumentParser(description='Script release the current release candidate.')
         parser.add_argument("--citk", default=citk_path, help='Path to the citk project which contains the project and distribution descriptions.')
-        parser.add_argument("--distribution", default=distribution_name, help='The name of the release candidate distribution.')
-        parser.add_argument("--version", help='The version which is used for the release.', required=True)
+        parser.add_argument("--distribution", default=distribution_name, help='The name and version of the release candidate distribution. e.g. lsp-csra')
+        parser.add_argument("--version", help='The version to release.', required=True)
         parser.add_argument("-v", default=verbose_flag, help='Enable this verbose flag to get more logging and exception printing during application errors.', action='store_true')
         args = parser.parse_args()
         citk_path = args.citk
