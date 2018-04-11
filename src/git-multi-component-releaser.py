@@ -35,7 +35,7 @@ import json
 if __name__ == "__main__":
 
     temp_folder = "/tmp/"+str(getpass.getuser())+"/csra-release"
-    config_file_uri = "./csra-release.cfg"
+    config_file_uri = "./csra-release-whitelist.cfg"
 
     try:
         # load config file
