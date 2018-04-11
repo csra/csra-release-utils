@@ -38,7 +38,11 @@ import traceback
 import fileinput
 import citk_version_updater
 from citk_version_updater.main import main as citk_main
+import coloredlogs, logging
 
+coloredlogs.install()
+_LOGGER = logging.getLogger(__name__)
+_LOGGER.addHandler(logging.NullHandler())
 
 # data type definition
 class ProjectDescription(object):
@@ -54,7 +58,7 @@ class DistributionReport(object):
 
 
 def prepare_distribution_file(distribution_file):
-    print ("=== " + colored("prepare distribution " + str(distribution_file), 'green') + " ===")
+    _LOGGER.info("=== " + colored("prepare distribution " + str(distribution_file), 'green') + " ===")
     projects_to_upgrade = []
     projects_to_release = []
     version_section_detected = False
@@ -70,7 +74,7 @@ def prepare_distribution_file(distribution_file):
             if version_section_detected:
                 if "\"latest-stable\"" in line:
                     projects_to_upgrade.append("'" + line.split('"')[1] + "'")
-                if "\"master\"" in line:
+                if "\"master\"" in line and not "\"commit\"" in line:
                     projects_to_release.append(ProjectDescription(line.split('"')[1], "master"))
                 if "\"rc\"" in line:
                     project_name = line.split('"')[1]
@@ -86,13 +90,13 @@ def prepare_distribution_file(distribution_file):
             #        context = line.split(':')
             #        context[1] = " \"" + distribution_version + "\",\n"
             #        line = ':'.join(context)
-            #
+            #f
             # release_file.write(line)
     return DistributionReport(projects_to_upgrade, projects_to_release)
 
 
 def release_related_projects(projects_to_release, citk_path, distribution_release_name, release_version):
-    print ("=== " + colored("release related projects", 'green') + " ===")
+    _LOGGER.info("=== " + colored("release related projects", 'green') + " ===")
     
     tmp_folder = "/tmp/" + str(getpass.getuser()) + "/csra-release"
     try:
@@ -100,17 +104,16 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
         for project_description in projects_to_release:
             project_repository_url = detect_repository_url(project_description.project_name, citk_path)
             if not project_repository_url:
-                print(colored("ERROR", 'red') + ": " + colored("could not detect repository url", 'red') + " of " + colored(project_description.project_name, 'blue') + "! Skip release of this project!")
+                _LOGGER.error(colored("ERROR", 'red') + ": " + colored("could not detect repository url", 'red') + " of " + colored(project_description.project_name, 'blue') + "! Skip release of this project!")
                 continue
 
-            print("create release branch " + colored(release_version, 'blue') + " of project " + project_description.project_name + " from branch " + colored(project_description.project_version, 'blue') + "...")
+            _LOGGER.info("create release branch " + colored(release_version, 'blue') + " of project " + project_description.project_name + " from branch " + colored(project_description.project_version, 'blue') + "...")
             git_repo = Repo.clone_from(project_repository_url, tmp_folder + "/" + project_description.project_name, branch=project_description.project_version)
             try:
                 git_repo.git.checkout(b=str(release_version))
             except Exception as ex:
-                print(colored("ERROR:", 'red') + " Could not branch project " + colored(project_description.project_name, 'blue') + "! Branch " + colored(release_version, 'blue') + " may already exist?")
-                if verbose_flag:
-                    traceback.print_exc()
+                _LOGGER.error(colored("ERROR:", 'red') + " Could not branch project " + colored(project_description.project_name, 'blue') + "! Branch " + colored(release_version, 'blue') + " may already exist?")
+                _LOGGER.debug(ex, exc_info=True)
                 continue
             git_repo.remotes.origin.push(str(release_version))
     # cleanup
@@ -125,14 +128,14 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
 
 
 def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name):
-    print ("=== " + colored("upgrade versions in new distribution", 'green') + " ===")
+    _LOGGER.info("=== " + colored("upgrade versions in new distribution", 'green') + " ===")
     
     for project in projects_to_upgrade:
         citk_main(["--citk", str(citk_path), "--project", str(project), "--distribution", str(distribution_release_name), "-v"])
         #system("citk-version-updater.py --citk " + str(citk_path) + " --project " + str(project) + " -v --distribution " + str(distribution_release_name))
     
 def push_distribution(citk_path, distribution_release_file, distribution_version):
-    print ("=== " + colored("push distribution", 'green') + " ===")
+    _LOGGER.info("=== " + colored("push distribution", 'green') + " ===")
     repo = Repo(citk_path)
     index = repo.index
     relative_dist_path = "distributions/" + distribution_release_file + ".distribution"
@@ -140,28 +143,25 @@ def push_distribution(citk_path, distribution_release_file, distribution_version
     
     index.add([relative_dist_path])
     index.commit("released version " + distribution_version + " from rc")
-    #print("remote " + str(repo.remotes[0]))
+    _LOGGER.debug("remote " + str(repo.remotes[0]))
     try:
         repo.remotes[0].push()
     except Exception as ex:
-        print("Could not push commit: " + str(ex))
+        _LOGGER.info("Could not push commit: " + str(ex))
 
 
 def print_info():
-    print ("=== " + colored("release scipt successfully finished", 'green') + " ===")
-    print ("=== "+colored("your next steps should be", 'blue')+" ===")
-    print ("     "+colored("*", 'blue')+"  backup local models, images and data stored at the core machines!")
-    print ("     "+colored("*", 'blue')+"  create jenkins release sync and generate distribution scripts.")
-    print ("     "+colored("*", 'blue')+"  inform the other developers about the new release!")
+    _LOGGER.info("=== " + colored("release script successfully finished", 'green') + " ===")
+    _LOGGER.info("=== "+colored("your next steps should be", 'blue')+" ===")
+    _LOGGER.info("     "+colored("*", 'blue')+"  backup local models, images and data stored at the core machines!")
+    _LOGGER.info("     "+colored("*", 'blue')+"  create jenkins release sync and generate distribution scripts.")
+    _LOGGER.info("     "+colored("*", 'blue')+"  inform the other developers about the new release!")
 
 
 def detect_repository_url(project_name, citk_path):
-    if verbose_flag:
-        print ("detect repository url of project "+colored(project_name, 'blue'))
+    _LOGGER.debug("detect repository url of project "+colored(project_name, 'blue'))
     project_file_name = citk_path + "/projects/" + project_name + ".project"
-    
-    if verbose_flag:
-        print ("try to open project: "+colored(project_file_name, 'blue'))
+    _LOGGER.debug("try to open project: "+colored(project_file_name, 'blue'))
 
     if not os.path.isfile(project_file_name):
         print(colored("ERROR", 'red') + ": detected project file "+colored(project_file_name, 'blue') + " does not exists!")
@@ -180,7 +180,7 @@ def detect_repository_url(project_name, citk_path):
         if data["variables"]["repository"]:
              return data["variables"]["repository"]
         else:
-            print(colored("ERROR", 'red') + ": no scm repository was not declared in project file "+colored(project_file_name, 'blue') + " which is needed for the auto project release!")
+            _LOGGER.error(colored("ERROR", 'red') + ": no scm repository was not declared in project file "+colored(project_file_name, 'blue') + " which is needed for the auto project release!")
             raise ValueError('Error 23')
 
 
@@ -188,9 +188,12 @@ def entry_point():
     exit(main())
 
 
-verbose_flag = False
-
 def main(argv=None):
+    _LOGGER.debug("this is a debugging message")
+    _LOGGER.info("this is an informational message")
+    _LOGGER.warning("this is a warning message")
+    _LOGGER.error("this is an error message")
+    _LOGGER.critical("this is a critical message")
     
     # pre init
     distribution_name = "lsp-csra"
@@ -206,15 +209,18 @@ def main(argv=None):
         parser.add_argument("--citk", default=citk_path, help='Path to the citk project which contains the project and distribution descriptions.')
         parser.add_argument("--distribution", default=distribution_name, help='The name and version of the release candidate distribution. e.g. lsp-csra')
         parser.add_argument("--version", help='The version to release.', required=True)
-        parser.add_argument("-v", default=verbose_flag, help='Enable this verbose flag to get more logging and exception printing during application errors.', action='store_true')
+        parser.add_argument("-v", help='Enable this verbose flag to get more logging and exception printing during application errors.', action='store_true')
         args = parser.parse_args()
         citk_path = args.citk
         distribution_name = args.distribution
         distribution_version = args.version
 
-        global verbose_flag
-        verbose_flag = args.v
-        
+        # config logger
+        if args.v:
+            _LOGGER.setLevel(logging.DEBUG)
+        else:
+            _LOGGER.setLevel(logging.INFO)
+
         # post init
         distribution_release_name = distribution_name + "-" + distribution_version
         distribution_file_uri = citk_path + "/distributions/" + distribution_release_name + ".distribution"
@@ -227,17 +233,16 @@ def main(argv=None):
         # push_distribution(citk_path, distribution_release_name, distribution_version)
         print_info()
     except Exception as ex:
-        print("could not release " + colored("rc", 'red') + "!")
+        _LOGGER.error("could not release " + colored("rc", 'red') + "!")
         if ex.message:
-            print(colored("ERROR", 'red') + ": " + ex.message)
-        if verbose_flag:
-            traceback.print_exc()            
+            _LOGGER.error(colored("ERROR", 'red') + ": " + ex.message)
+        _LOGGER.debug(ex, exc_info=True)
         return 1
     
     return 0
-  
-                   
-                
 
 
+if __name__ == '__main__':
+    import sys
+    main(sys.argv)
 
