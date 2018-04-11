@@ -10,7 +10,7 @@ setup (
     author='DivineThreepwood',
     author_email='divine@openbase.org',
 
-    summary='A collection of util scripts to support and '
+    description='A collection of util scripts to support and '
             'to simplify the csra release process.',
     url='https://github.com/csra/csra-release-utils',
     license="LGPLv3",
@@ -19,6 +19,7 @@ setup (
 
     packages=find_packages('src'),
     package_dir={'': 'src'},
+    zip_safe=True,
 
     # Declare your packages' dependencies here, for eg:
     install_requires=['GitPython', 'termcolor'],
