@@ -23,14 +23,10 @@
 # import
 from __future__ import print_function
 from git import *
-from git.objects.base import *
 import shutil
 from termcolor import colored
 import getpass
 import json
-import json
-
-
 
 if __name__ == "__main__":
 
@@ -44,18 +40,16 @@ if __name__ == "__main__":
             release_version = release_config['version']
             for repo in release_config['repos']:
                 project_name = repo['url'].rsplit('/', 1)[-1]
-                print("release "+release_version+" of project "+project_name+" from branch["+repo['branch']+"]...")
-                
-                git_repo = Repo.clone_from(repo['url'], temp_folder+"/"+project_name, branch=repo['branch'])
+                print("release " + release_version + " of project "+project_name+" from branch[" + repo['branch'] + "]...")
+
+                git_repo = Repo.clone_from(repo['url'], temp_folder + "/"+project_name, branch=repo['branch'])
                 try:
-                    new_tag = git_repo.create_tag(release_version, message='Automatic release of tag "{0}"'.format(release_version)) 
+                    new_tag = git_repo.create_tag(release_version, message='Automatic release of tag "{0}"'.format(release_version))
 
                 except Exception as ex:
-                    print(colored("ERROR:", 'red') +" Could not tag project "+colored(project_name, 'blue')+"! Tag "+colored(release_version, 'blue')+" may already exist?")
+                    print(colored("ERROR:", 'red') + " Could not tag project " + colored(project_name, 'blue') + "! Tag " + colored(release_version, 'blue') + " may already exist?")
                     continue
                 git_repo.remotes.origin.push(new_tag)
-                
-
-        # cleanup
     finally:
+        # cleanup
         shutil.rmtree(temp_folder)

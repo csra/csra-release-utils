@@ -24,19 +24,14 @@
 from __future__ import print_function
 import argparse
 from git import *
-from git.objects.base import *
 import os
 import os.path
-from os import system
 from os.path import expanduser
 from termcolor import colored
 import json
 import getpass
 from collections import OrderedDict
 import shutil
-import traceback
-import fileinput
-import citk_version_updater
 from citk_version_updater.main import main as citk_main
 import coloredlogs, logging
 
@@ -73,25 +68,14 @@ def prepare_distribution_file(distribution_file):
 
             if version_section_detected:
                 if "\"latest-stable\"" in line:
-                    projects_to_upgrade.append("'" + line.split('"')[1] + "'")
-                if "\"master\"" in line and not "\"commit\"" in line:
+                    projects_to_upgrade.append(line.split('"')[1])
+                    # projects_to_upgrade.append("'" + line.split('"')[1] + "'")
+                if "\"master\"" in line and not "\"commit\"" in line and not "\"version-name\"" in line:
                     projects_to_release.append(ProjectDescription(line.split('"')[1], "master"))
                 if "\"rc\"" in line:
                     project_name = line.split('"')[1]
                     if project_name != "variant":
                         projects_to_release.append(ProjectDescription(project_name, "rc"))
-            # else:
-            #    # rename rc into release name
-            #    if "\"name\"" in line:
-            #        context = line.split(':')
-            #        context[1] = " \"lsp-csra-" + distribution_version + "\",\n"
-            #        line = ':'.join(context)
-            #    if "\"variant\"" in line:
-            #        context = line.split(':')
-            #        context[1] = " \"" + distribution_version + "\",\n"
-            #        line = ':'.join(context)
-            #f
-            # release_file.write(line)
     return DistributionReport(projects_to_upgrade, projects_to_release)
 
 
@@ -124,23 +108,20 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
     # upgrade versions in distribution file
     for project_description in projects_to_release:
         citk_main(["--citk", str(citk_path), "--project", str(project_description.project_name), "--distribution", str(distribution_release_name), "-v", "--version", str(release_version)])
-        #system("citk-version-updater.py --citk " + str(citk_path) + " --project " + str(project_description.project_name) + " --distribution " + str(distribution_release_name) + " -v --version " + str(release_version))
-
 
 def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name):
     _LOGGER.info("=== " + colored("upgrade versions in new distribution", 'green') + " ===")
     
     for project in projects_to_upgrade:
         citk_main(["--citk", str(citk_path), "--project", str(project), "--distribution", str(distribution_release_name), "-v"])
-        #system("citk-version-updater.py --citk " + str(citk_path) + " --project " + str(project) + " -v --distribution " + str(distribution_release_name))
-    
+
 def push_distribution(citk_path, distribution_release_file, distribution_version):
     _LOGGER.info("=== " + colored("push distribution", 'green') + " ===")
     repo = Repo(citk_path)
     index = repo.index
     relative_dist_path = "distributions/" + distribution_release_file + ".distribution"
-    #print("add distrubtion_file " + relative_dist_path)
-    
+    _LOGGER.debug("add distrubtion_file " + relative_dist_path)
+
     index.add([relative_dist_path])
     index.commit("released version " + distribution_version + " from rc")
     _LOGGER.debug("remote " + str(repo.remotes[0]))
@@ -189,12 +170,7 @@ def entry_point():
 
 
 def main(argv=None):
-    _LOGGER.debug("this is a debugging message")
-    _LOGGER.info("this is an informational message")
-    _LOGGER.warning("this is a warning message")
-    _LOGGER.error("this is an error message")
-    _LOGGER.critical("this is a critical message")
-    
+
     # pre init
     distribution_name = "lsp-csra"
     distribution_version = "rc"
@@ -217,8 +193,10 @@ def main(argv=None):
 
         # config logger
         if args.v:
+            _LOGGER.info("verbose mode enabled")
             _LOGGER.setLevel(logging.DEBUG)
         else:
+            _LOGGER.info("verbose mode disabled")
             _LOGGER.setLevel(logging.INFO)
 
         # post init
@@ -229,6 +207,7 @@ def main(argv=None):
         distribution_report = prepare_distribution_file(distribution_file_uri)
         release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, "release-" + str(distribution_version))
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
+
         # auto push disabled because a manual validation should be performed first.
         # push_distribution(citk_path, distribution_release_name, distribution_version)
         print_info()
@@ -236,7 +215,7 @@ def main(argv=None):
         _LOGGER.error("could not release " + colored("rc", 'red') + "!")
         if ex.message:
             _LOGGER.error(colored("ERROR", 'red') + ": " + ex.message)
-        _LOGGER.debug(ex, exc_info=True)
+        _LOGGER.info(ex, exc_info=True)
         return 1
     
     return 0
