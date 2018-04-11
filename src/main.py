@@ -33,11 +33,13 @@ import getpass
 from collections import OrderedDict
 import shutil
 from citk_version_updater.main import main as citk_main
-import coloredlogs, logging
+import logging
+import coloredlogs
 
 coloredlogs.install()
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.addHandler(logging.NullHandler())
+
 
 # data type definition
 class ProjectDescription(object):
