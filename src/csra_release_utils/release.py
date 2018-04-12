@@ -60,10 +60,6 @@ def prepare_distribution_file(distribution_file):
     projects_to_release = []
     version_section_detected = False
 
-    if not os.path.exists(distribution_file):
-        raise ValueError(
-            "distribution " + colored(str(distribution_file), 'red') + " does not exist!")
-
     # collect project informations
     # with open(distribution_release_file, 'w') as release_file:
     with open(distribution_file) as dist_file:
@@ -238,6 +234,11 @@ def main(argv=None):
         # post init
         distribution_release_name = distribution_name + "-" + distribution_version
         distribution_file_uri = citk_path + "/distributions/" + distribution_release_name + ".distribution"
+
+        # verify
+        if not os.path.exists(distribution_file_uri):
+            raise ValueError(
+                "distribution " + colored(str(distribution_file_uri), 'red') + " does not exist!")
 
         # start release pipeline
         distribution_report = prepare_distribution_file(distribution_file_uri)
