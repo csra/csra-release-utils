@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-#encoding: UTF-8
+# encoding: UTF-8
 
 ###################################################################
 #                                                                 #
@@ -60,6 +60,10 @@ def prepare_distribution_file(distribution_file):
     projects_to_release = []
     version_section_detected = False
 
+    if not os.path.exists(distribution_file):
+        raise ValueError(
+            "distribution " + colored(str(distribution_file), 'red') + " does not exist!")
+
     # collect project informations
     # with open(distribution_release_file, 'w') as release_file:
     with open(distribution_file) as dist_file:
@@ -83,26 +87,37 @@ def prepare_distribution_file(distribution_file):
 
 def release_related_projects(projects_to_release, citk_path, distribution_release_name, release_version, dry_run):
     _LOGGER.info("=== " + colored("release related projects", 'green') + " ===")
-    
+
     tmp_folder = "/tmp/" + str(getpass.getuser()) + "/csra-release"
+
+    # cleanup olf tmp files
+    if os.path.exists(tmp_folder):
+        shutil.rmtree(tmp_folder)
+
     try:
         # release projects
         for project_description in projects_to_release:
             project_repository_url = detect_repository_url(project_description.project_name, citk_path)
             if not project_repository_url:
-                _LOGGER.error(colored("ERROR", 'red') + ": " + colored("could not detect repository url", 'red') + " of " + colored(project_description.project_name, 'blue') + "! Skip release of this project!")
+                _LOGGER.error(colored("could not detect repository url",
+                                                                       'red') + " of " + colored(
+                    project_description.project_name, 'blue') + "! Skip release of this project!")
                 continue
 
-            _LOGGER.info("create release branch " + colored(release_version, 'blue') + " of project " + project_description.project_name + " from branch " + colored(project_description.project_version, 'blue') + "...")
-            git_repo = Repo.clone_from(project_repository_url, tmp_folder + "/" + project_description.project_name, branch=project_description.project_version)
+            _LOGGER.info("create release branch " + colored(release_version,
+                                                            'blue') + " of project " + project_description.project_name + " from branch " + colored(
+                project_description.project_version, 'blue') + "...")
+            git_repo = Repo.clone_from(project_repository_url, tmp_folder + "/" + project_description.project_name,
+                                       branch=project_description.project_version)
             try:
                 git_repo.git.checkout(b=str(release_version))
             except Exception as ex:
-                _LOGGER.error(colored("ERROR:", 'red') + " Could not branch project " + colored(project_description.project_name, 'blue') + "! Branch " + colored(release_version, 'blue') + " may already exist?")
+                _LOGGER.error("Could not branch project " + colored(project_description.project_name, 'blue') + "! Branch " + colored(
+                        release_version, 'blue') + " may already exist?")
                 _LOGGER.debug(ex, exc_info=True)
                 continue
             if dry_run:
-                _LOGGER.warn("version "+ release_version + " of " + project_description.project_name + " will not be pushed because dry run detected!")
+                _LOGGER.debug("version " + release_version + " of " + project_description.project_name + " will not be pushed because dry run detected!")
                 continue
             git_repo.remotes.origin.push(str(release_version))
 
@@ -110,22 +125,27 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
     finally:
         if os.path.exists(tmp_folder):
             shutil.rmtree(tmp_folder)
-    
+
     # upgrade versions in distribution file
     for project_description in projects_to_release:
-        citk_main(["--citk", str(citk_path), "--project", str(project_description.project_name), "--distribution", str(distribution_release_name), "-v", "--version", str(release_version)])
+        citk_main(["--citk", str(citk_path), "--project", str(project_description.project_name), "--distribution",
+                   str(distribution_release_name), "-v", "--version", str(release_version)])
+
 
 def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name):
     _LOGGER.info("=== " + colored("upgrade versions in new distribution", 'green') + " ===")
-    
+
     for project in projects_to_upgrade:
-        citk_main(["--citk", str(citk_path), "--project", str(project), "--distribution", str(distribution_release_name), "-v"])
+        citk_main(
+            ["--citk", str(citk_path), "--project", str(project), "--distribution", str(distribution_release_name),
+             "-v"])
+
 
 def push_distribution(citk_path, distribution_release_file, distribution_version, dry_run):
     _LOGGER.info("=== " + colored("push distribution", 'green') + " ===")
 
     if dry_run:
-        _LOGGER.warn(distribution_release_file + " will not be pushed because dry run detected!")
+        _LOGGER.debug(distribution_release_file + " will not be pushed because dry run detected!")
         return
 
     repo = Repo(citk_path)
@@ -144,19 +164,20 @@ def push_distribution(citk_path, distribution_release_file, distribution_version
 
 def print_info():
     _LOGGER.info("=== " + colored("release script successfully finished", 'green') + " ===")
-    _LOGGER.info("=== "+colored("your next steps should be", 'blue')+" ===")
-    _LOGGER.info("     "+colored("*", 'blue')+"  backup local models, images and data stored at the core machines!")
-    _LOGGER.info("     "+colored("*", 'blue')+"  create jenkins release sync and generate distribution scripts.")
-    _LOGGER.info("     "+colored("*", 'blue')+"  inform the other developers about the new release!")
+    _LOGGER.info("=== " + colored("your next steps should be", 'blue') + " ===")
+    _LOGGER.info("     " + colored("*", 'blue') + "  backup local models, images and data stored at the core machines!")
+    _LOGGER.info("     " + colored("*", 'blue') + "  create jenkins release sync and generate distribution scripts.")
+    _LOGGER.info("     " + colored("*", 'blue') + "  inform the other developers about the new release!")
 
 
 def detect_repository_url(project_name, citk_path):
-    _LOGGER.debug("detect repository url of project "+colored(project_name, 'blue'))
+    _LOGGER.debug("detect repository url of project " + colored(project_name, 'blue'))
     project_file_name = citk_path + "/projects/" + project_name + ".project"
-    _LOGGER.debug("try to open project: "+colored(project_file_name, 'blue'))
+    _LOGGER.debug("try to open project: " + colored(project_file_name, 'blue'))
 
     if not os.path.isfile(project_file_name):
-        print(colored("ERROR", 'red') + ": detected project file "+colored(project_file_name, 'blue') + " does not exists!")
+        print(colored("ERROR", 'red') + ": detected project file " + colored(project_file_name,
+                                                                             'blue') + " does not exists!")
         raise ValueError('Error 22')
 
     with open(project_file_name, "r+") as project_file:
@@ -165,14 +186,15 @@ def detect_repository_url(project_name, citk_path):
         # check if repository is defined
 
         if not 'repository' in data["variables"]:
-            print(colored("ERROR", 'red') + ": no scm repository was not declared in project file "+colored(project_file_name, 'blue') + " which is needed for the auto project release!")
+            print(colored("ERROR", 'red') + ": no scm repository was not declared in project file " + colored(
+                project_file_name, 'blue') + " which is needed for the auto project release!")
             raise ValueError('Error 23')
 
-
         if data["variables"]["repository"]:
-             return data["variables"]["repository"]
+            return data["variables"]["repository"]
         else:
-            _LOGGER.error(colored("ERROR", 'red') + ": no scm repository was not declared in project file "+colored(project_file_name, 'blue') + " which is needed for the auto project release!")
+            _LOGGER.error(colored("ERROR", 'red') + ": no scm repository was not declared in project file " + colored(
+                project_file_name, 'blue') + " which is needed for the auto project release!")
             raise ValueError('Error 23')
 
 
@@ -181,23 +203,27 @@ def entry_point():
 
 
 def main(argv=None):
-
     # pre init
     distribution_name = "lsp-csra"
     distribution_version = "rc"
 
     try:
-        
+
         # init
         citk_path = expanduser("~") + "/workspace/csra/citk"
 
         # parse command line
         parser = argparse.ArgumentParser(description='Script release the current release candidate.')
-        parser.add_argument("--citk", default=citk_path, help='Path to the citk project which contains the project and distribution descriptions.')
-        parser.add_argument("--distribution", default=distribution_name, help='The name and version of the release candidate distribution. e.g. lsp-csra')
-        parser.add_argument("--dry-run", help='This mode does not push modified changes to any git repositories.', action='store_true')
+        parser.add_argument("--citk", default=citk_path,
+                            help='Path to the citk project which contains the project and distribution descriptions.')
+        parser.add_argument("--distribution", default=distribution_name,
+                            help='The name and version of the release candidate distribution. e.g. lsp-csra')
+        parser.add_argument("--dry-run", help='This mode does not push modified changes to any git repositories.',
+                            action='store_true')
         parser.add_argument("--version", help='The version to release.', required=True)
-        parser.add_argument("-v", help='Enable this verbose flag to get more logging and exception printing during application errors.', action='store_true')
+        parser.add_argument("-v",
+                            help='Enable this verbose flag to get more logging and exception printing during application errors.',
+                            action='store_true')
         args = parser.parse_args()
         citk_path = args.citk
         distribution_name = args.distribution
@@ -205,7 +231,6 @@ def main(argv=None):
 
         # config logger
         if args.v:
-            _LOGGER.info("verbose mode enabled")
             _LOGGER.setLevel(logging.DEBUG)
         else:
             _LOGGER.setLevel(logging.INFO)
@@ -216,8 +241,10 @@ def main(argv=None):
 
         # start release pipeline
         distribution_report = prepare_distribution_file(distribution_file_uri)
-        release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, "release-" + str(distribution_version), args.dry_run)
-        upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
+        release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name,
+                                 "release-" + str(distribution_version), args.dry_run)
+        upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path,
+                                             distribution_release_name)
 
         # auto push disabled because a manual validation should be performed first.
         # push_distribution(citk_path, distribution_release_name, distribution_version, args.dry_run)
@@ -225,14 +252,14 @@ def main(argv=None):
     except Exception as ex:
         _LOGGER.error("could not release " + colored("rc", 'red') + "!")
         if ex.message:
-            _LOGGER.error(colored("ERROR", 'red') + ": " + ex.message)
-        _LOGGER.info(ex, exc_info=True)
+            _LOGGER.error(ex.message)
+        _LOGGER.debug(ex, exc_info=True)
         return 1
-    
+
     return 0
 
 
 if __name__ == '__main__':
     import sys
-    main(sys.argv)
 
+    main(sys.argv)
