@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/csra-release-tool.iml" filepath="$PROJECT_DIR$/.idea/csra-release-tool.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/csra-release-utils.iml" filepath="$PROJECT_DIR$/.idea/csra-release-utils.iml" />
     </modules>
   </component>
 </project>

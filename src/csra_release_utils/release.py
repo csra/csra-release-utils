@@ -81,7 +81,7 @@ def prepare_distribution_file(distribution_file):
     return DistributionReport(projects_to_upgrade, projects_to_release)
 
 
-def release_related_projects(projects_to_release, citk_path, distribution_release_name, release_version):
+def release_related_projects(projects_to_release, citk_path, distribution_release_name, release_version, dry_run):
     _LOGGER.info("=== " + colored("release related projects", 'green') + " ===")
     
     tmp_folder = "/tmp/" + str(getpass.getuser()) + "/csra-release"
@@ -101,7 +101,11 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
                 _LOGGER.error(colored("ERROR:", 'red') + " Could not branch project " + colored(project_description.project_name, 'blue') + "! Branch " + colored(release_version, 'blue') + " may already exist?")
                 _LOGGER.debug(ex, exc_info=True)
                 continue
+            if dry_run:
+                _LOGGER.warn("version "+ release_version + " of " + project_description.project_name + " will not be pushed because dry run detected!")
+                continue
             git_repo.remotes.origin.push(str(release_version))
+
     # cleanup
     finally:
         if os.path.exists(tmp_folder):
@@ -117,8 +121,13 @@ def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distrib
     for project in projects_to_upgrade:
         citk_main(["--citk", str(citk_path), "--project", str(project), "--distribution", str(distribution_release_name), "-v"])
 
-def push_distribution(citk_path, distribution_release_file, distribution_version):
+def push_distribution(citk_path, distribution_release_file, distribution_version, dry_run):
     _LOGGER.info("=== " + colored("push distribution", 'green') + " ===")
+
+    if dry_run:
+        _LOGGER.warn(distribution_release_file + " will not be pushed because dry run detected!")
+        return
+
     repo = Repo(citk_path)
     index = repo.index
     relative_dist_path = "distributions/" + distribution_release_file + ".distribution"
@@ -186,6 +195,7 @@ def main(argv=None):
         parser = argparse.ArgumentParser(description='Script release the current release candidate.')
         parser.add_argument("--citk", default=citk_path, help='Path to the citk project which contains the project and distribution descriptions.')
         parser.add_argument("--distribution", default=distribution_name, help='The name and version of the release candidate distribution. e.g. lsp-csra')
+        parser.add_argument("--dry-run", help='This mode does not push modified changes to any git repositories.', action='store_true')
         parser.add_argument("--version", help='The version to release.', required=True)
         parser.add_argument("-v", help='Enable this verbose flag to get more logging and exception printing during application errors.', action='store_true')
         args = parser.parse_args()
@@ -206,11 +216,11 @@ def main(argv=None):
 
         # start release pipeline
         distribution_report = prepare_distribution_file(distribution_file_uri)
-        release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, "release-" + str(distribution_version))
+        release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name, "release-" + str(distribution_version), args.dry_run)
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path, distribution_release_name)
 
         # auto push disabled because a manual validation should be performed first.
-        # push_distribution(citk_path, distribution_release_name, distribution_version)
+        # push_distribution(citk_path, distribution_release_name, distribution_version, args.dry_run)
         print_info()
     except Exception as ex:
         _LOGGER.error("could not release " + colored("rc", 'red') + "!")
