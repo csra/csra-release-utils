@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='csra_release_utils',
-    version='0.2',
+    version='0.3',
 
     author='DivineThreepwood',
     author_email='divine@openbase.org',
