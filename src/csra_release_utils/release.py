@@ -28,7 +28,7 @@ import os
 import os.path
 from os.path import expanduser
 from termcolor import colored
-import json
+import oyaml as yaml
 import getpass
 from collections import OrderedDict
 import shutil
@@ -65,28 +65,32 @@ def prepare_distribution_file(distribution_file):
     with open(distribution_file) as dist_file:
         for line in dist_file.readlines():
 
-            if "\"versions\":" in line:
+            if "versions:" in line:
                 version_section_detected = True
 
             if version_section_detected:
-                if "\"latest-stable\"" in line:
-                    projects_to_upgrade.append(line.split('"')[1])
+                if "@latest-stable" in line:
+                    projects_to_upgrade.append(line.split(' ')[1])
                     # projects_to_upgrade.append("'" + line.split('"')[1] + "'")
-                if "\"master\"" in line and not "\"commit\"" in line and not "\"version-name\"" in line:
-                    projects_to_release.append(ProjectDescription(line.split('"')[1], "master"))
-                if "\"rc\"" in line:
-                    project_name = line.split('"')[1]
-                    if project_name != "variant":
-                        projects_to_release.append(ProjectDescription(project_name, "rc"))
+                if "@master" in line:
+                    projects_to_release.append(ProjectDescription(line.split(' ')[1], "master"))
+                if "@rc" in line:
+                    project_name = line.split(' ')[1]
+                    # if project_name != "variant":
+                    projects_to_release.append(ProjectDescription(project_name, "rc"))
     return DistributionReport(projects_to_upgrade, projects_to_release)
 
 
-def release_related_projects(projects_to_release, citk_path, distribution_release_name, release_version, dry_run):
+def release_related_projects(projects_to_release, citk_path, distribution_release_name, release_version, dry_run,
+                             verbose):
     _LOGGER.info("=== " + colored("release related projects", 'green') + " ===")
 
     tmp_folder = "/tmp/" + str(getpass.getuser()) + "/csra-release"
 
-    # cleanup olf tmp files
+    if len(projects_to_release) == 0:
+        raise ValueError("no projects found to release!")
+
+    # cleanup old tmp files
     if os.path.exists(tmp_folder):
         shutil.rmtree(tmp_folder)
 
@@ -95,27 +99,36 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
         for project_description in projects_to_release:
             project_repository_url = detect_repository_url(project_description.project_name, citk_path)
             if not project_repository_url:
-                _LOGGER.error(colored("could not detect repository url",
-                                                                       'red') + " of " + colored(
+                _LOGGER.error(colored("could not detect repository url", 'red') + " of " + colored(
                     project_description.project_name, 'blue') + "! Skip release of this project!")
                 continue
 
-            _LOGGER.info("create release branch " + colored(release_version,
-                                                            'blue') + " of project " + project_description.project_name + " from branch " + colored(
-                project_description.project_version, 'blue') + "...")
             git_repo = Repo.clone_from(project_repository_url, tmp_folder + "/" + project_description.project_name,
                                        branch=project_description.project_version)
+
             try:
-                git_repo.git.checkout(b=str(release_version))
-            except Exception as ex:
-                _LOGGER.error("Could not branch project " + colored(project_description.project_name, 'blue') + "! Branch " + colored(
-                        release_version, 'blue') + " may already exist?")
-                _LOGGER.debug(ex, exc_info=True)
+                git_repo.git.checkout('origin/' + str(release_version), b=str(release_version))
+                _LOGGER.warn("skip project " + project_description.project_name + " release because branch " + str(
+                    release_version) + " already exist!")
                 continue
-            if dry_run:
-                _LOGGER.debug("version " + release_version + " of " + project_description.project_name + " will not be pushed because dry run detected!")
-                continue
-            git_repo.remotes.origin.push(str(release_version))
+            except:
+                # branch does not exist like expected so just continue
+                try:
+                    _LOGGER.info("create release branch " + colored(release_version,
+                                                                    'blue') + " of project " + project_description.project_name + " from branch " + colored(
+                        project_description.project_version, 'blue') + "...")
+                    git_repo.git.checkout(b=str(release_version))
+                except Exception as ex:
+                    _LOGGER.error("could not branch project " + colored(project_description.project_name,
+                                                                        'blue') + "! Branch " + colored(release_version,
+                                                                                                        'blue') + " may already exist?")
+                    _LOGGER.debug(ex, exc_info=True)
+                    continue
+                if dry_run:
+                    _LOGGER.debug(
+                        "version " + release_version + " of " + project_description.project_name + " will not be pushed because dry run detected!")
+                    continue
+                git_repo.remotes.origin.push(str(release_version))
 
     # cleanup
     finally:
@@ -124,17 +137,24 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
 
     # upgrade versions in distribution file
     for project_description in projects_to_release:
-        citk_main(["--citk", str(citk_path), "--project", str(project_description.project_name), "--distribution",
-                   str(distribution_release_name), "-v", "--version", str(release_version)])
+        citk_main(["--citk", str(citk_path),
+                            "--project", str(project_description.project_name),
+                            "--distribution", str(distribution_release_name),
+                            "-v", str(verbose),
+                            "--version", str(release_version),
+                            "--dry-run", str(dry_run)])
 
 
-def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name):
+def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name, dry_run, verbose):
     _LOGGER.info("=== " + colored("upgrade versions in new distribution", 'green') + " ===")
 
     for project in projects_to_upgrade:
         citk_main(
-            ["--citk", str(citk_path), "--project", str(project), "--distribution", str(distribution_release_name),
-             "-v"])
+            ["--citk", str(citk_path),
+             "--project", str(project),
+             "--distribution", str(distribution_release_name),
+             "-v", str(verbose),
+             "--dry-run", str(dry_run)])
 
 
 def push_distribution(citk_path, distribution_release_file, distribution_version, dry_run):
@@ -177,7 +197,7 @@ def detect_repository_url(project_name, citk_path):
         raise ValueError('Error 22')
 
     with open(project_file_name, "r+") as project_file:
-        data = json.load(project_file, object_pairs_hook=OrderedDict, encoding="utf-8")
+        data = yaml.load(project_file)
 
         # check if repository is defined
 
@@ -220,7 +240,15 @@ def main(argv=None):
         parser.add_argument("-v",
                             help='Enable this verbose flag to get more logging and exception printing during application errors.',
                             action='store_true')
+
+        # print proper help screen if no arguments are given
+        if len(argv) == 1:
+            parser.print_help()
+            return 1
+
+        # parse command line
         args = parser.parse_args()
+
         citk_path = args.citk
         distribution_name = args.distribution
         distribution_version = args.version
@@ -228,11 +256,13 @@ def main(argv=None):
         # config logger
         if args.v:
             _LOGGER.setLevel(logging.DEBUG)
+            coloredlogs.install(level='DEBUG', logger=_LOGGER)
+            _LOGGER.debug('Debug log enabled.')
         else:
             _LOGGER.setLevel(logging.INFO)
 
         # post init
-        distribution_release_name = distribution_name + "-" + distribution_version
+        distribution_release_name = distribution_name
         distribution_file_uri = citk_path + "/distributions/" + distribution_release_name + ".distribution"
 
         # verify
@@ -243,18 +273,20 @@ def main(argv=None):
         # start release pipeline
         distribution_report = prepare_distribution_file(distribution_file_uri)
         release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name,
-                                 "release-" + str(distribution_version), args.dry_run)
+                                 "release-" + str(distribution_version), args.dry_run, args.v)
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path,
-                                             distribution_release_name)
+                                             distribution_release_name, args.dry_run, args.v)
 
         # auto push disabled because a manual validation should be performed first.
         # push_distribution(citk_path, distribution_release_name, distribution_version, args.dry_run)
         print_info()
     except Exception as ex:
-        _LOGGER.error("could not release " + colored("rc", 'red') + "!")
+        _LOGGER.error("could not release " + colored(str(distribution_version), 'red') + "!")
         if ex.message:
-            _LOGGER.error(ex.message)
-        _LOGGER.debug(ex, exc_info=True)
+            if args.v:
+                _LOGGER.error(ex, exc_info=True)
+            else:
+                _LOGGER.error(ex)
         return 1
 
     return 0
@@ -263,4 +295,4 @@ def main(argv=None):
 if __name__ == '__main__':
     import sys
 
-    main(sys.argv)
+    exit(main(sys.argv))
