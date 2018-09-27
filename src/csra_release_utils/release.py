@@ -137,24 +137,46 @@ def release_related_projects(projects_to_release, citk_path, distribution_releas
 
     # upgrade versions in distribution file
     for project_description in projects_to_release:
-        citk_main(["--citk", str(citk_path),
-                            "--project", str(project_description.project_name),
-                            "--distribution", str(distribution_release_name),
-                            "-v", str(verbose),
-                            "--version", str(release_version),
-                            "--dry-run", str(dry_run)])
+        _LOGGER.debug("release: " + str(project_description.project_name))
+
+        args = ["--citk", str(citk_path),
+                "--project", str(project_description.project_name),
+                "--distribution", str(distribution_release_name),
+                "--version", str(release_version)]
+
+        if verbose:
+            args.append("-v")
+
+        if dry_run:
+            args.append("--dry-run")
+
+        _LOGGER.debug("perform: citk-version-upgrade" + str(args))
+        status = citk_main(args)
+        if status != 0:
+            raise ValueError(
+                'could not release {0} failed with status {1}'.format(project_description.project_name, status))
 
 
 def upgrade_versions_in_new_distribution(projects_to_upgrade, citk_path, distribution_release_name, dry_run, verbose):
     _LOGGER.info("=== " + colored("upgrade versions in new distribution", 'green') + " ===")
 
     for project in projects_to_upgrade:
-        citk_main(
-            ["--citk", str(citk_path),
-             "--project", str(project),
-             "--distribution", str(distribution_release_name),
-             "-v", str(verbose),
-             "--dry-run", str(dry_run)])
+
+        args = ["--citk", str(citk_path),
+                "--project", str(project),
+                "--distribution", str(distribution_release_name)]
+
+        if verbose:
+            args.append("-v")
+
+        if dry_run:
+            args.append("--dry-run")
+
+        _LOGGER.debug("perform: citk-version-upgrade" + str(args))
+
+        status = citk_main(args)
+        if status != 0:
+            raise ValueError('could not upgrade {0} failed with status {1}'.format(distribution_release_name, status))
 
 
 def push_distribution(citk_path, distribution_release_file, distribution_version, dry_run):
@@ -217,12 +239,24 @@ def detect_repository_url(project_name, citk_path):
 def entry_point():
     exit(main())
 
+def update_bco_db_entry(distribution_file_uri, distribution_version_name, dry_run):
+    distribution_tmp_file_uri = distribution_file_uri + ".db.tmp"
+    with open(distribution_tmp_file_uri, 'w') as tmpFile:
+        _LOGGER.debug("detect projects...")
+        with open(distribution_file_uri) as distributionFile:
+            for line in distributionFile.readlines():
+                if "bco.registry.db.git.path" in line:
+                    _LOGGER.debug("found bco db entry: " + line)
+                    context = line.split(':')
+                    context[1] = " " + distribution_version_name + "\n"
+                    line = ':'.join(context)
+                    _LOGGER.debug("update bco db entry: " + line)
+                tmpFile.write(line)
+    if not dry_run:
+        shutil.move(distribution_tmp_file_uri, distribution_file_uri)
+
 
 def main(argv=None):
-    # pre init
-    distribution_name = "lsp-csra"
-    distribution_version = "rc"
-
     try:
 
         # init
@@ -232,7 +266,7 @@ def main(argv=None):
         parser = argparse.ArgumentParser(description='Script release the current release candidate.')
         parser.add_argument("--citk", default=citk_path,
                             help='Path to the citk project which contains the project and distribution descriptions.')
-        parser.add_argument("--distribution", default=distribution_name,
+        parser.add_argument("--distribution",
                             help='The name and version of the release candidate distribution. e.g. lsp-csra')
         parser.add_argument("--dry-run", help='This mode does not push modified changes to any git repositories.',
                             action='store_true')
@@ -241,17 +275,19 @@ def main(argv=None):
                             help='Enable this verbose flag to get more logging and exception printing during application errors.',
                             action='store_true')
 
-        # print proper help screen if no arguments are given
-        if len(argv) == 1:
+        # parse command line
+        args = parser.parse_args(argv)
+
+        # print proper help screen if not all needed arguments are given
+        if not all([args.distribution, args.version]):
             parser.print_help()
             return 1
-
-        # parse command line
-        args = parser.parse_args()
 
         citk_path = args.citk
         distribution_name = args.distribution
         distribution_version = args.version
+        distribution_version_name = "release-" + str(distribution_version)
+
 
         # config logger
         if args.v:
@@ -273,9 +309,12 @@ def main(argv=None):
         # start release pipeline
         distribution_report = prepare_distribution_file(distribution_file_uri)
         release_related_projects(distribution_report.projects_to_release, citk_path, distribution_release_name,
-                                 "release-" + str(distribution_version), args.dry_run, args.v)
+                                 distribution_version_name, args.dry_run, args.v)
         upgrade_versions_in_new_distribution(distribution_report.projects_to_upgrade, citk_path,
                                              distribution_release_name, args.dry_run, args.v)
+
+        # update bco registry db version in distribution file
+        update_bco_db_entry(distribution_file_uri, distribution_version_name, args.dry_run)
 
         # auto push disabled because a manual validation should be performed first.
         # push_distribution(citk_path, distribution_release_name, distribution_version, args.dry_run)
@@ -293,6 +332,4 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    import sys
-
-    exit(main(sys.argv))
+    exit(main())
